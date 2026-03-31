@@ -68,6 +68,47 @@ public class MemberRepositoryV0 {
         }
     }
 
+    public void update(String memberId, int money) throws SQLException {
+        String sql = "UPDATE member SET money = ? WHERE member_id = ?";
+
+        Connection con = null;
+        PreparedStatement pstmt = null;
+
+        try{
+            con = getConnection();
+            pstmt = con.prepareStatement(sql);
+            pstmt.setInt(1, money);
+            pstmt.setString(2, memberId);
+            int resultSize = pstmt.executeUpdate();
+            log.info("resultSize={} ", resultSize); //쿼리를 실행하고 영향받은 row수를 반환함., 테이블 1개라 1반환됨.
+        } catch (SQLException e) {
+            log.error("db error", e);
+            throw e;
+        } finally {
+            close(con, pstmt, null); // 항상 sql 호출을 보장되기 위해 finally에서 쿼리를 실행하고 나면 리소스를 정리한다.
+        }
+    }
+
+    public void delete(String memberId) throws SQLException {
+        String sql = "DELETE FROM member WHERE member_id = ?";
+
+        Connection con = null;
+        PreparedStatement pstmt = null;
+
+        try{
+            con = getConnection();
+            pstmt = con.prepareStatement(sql);
+            pstmt.setString(1, memberId);
+            pstmt.executeUpdate();
+
+        } catch (SQLException e) {
+            log.error("db error", e);
+            throw e;
+        } finally {
+            close(con, pstmt, null);
+        }
+    }
+
     //쿼리를 실행하고 나면 리소스를 정리해야 한다. 여기서는 Connection , PreparedStatement 를 사용했다. 리소
     //스를 정리할 때는 항상 역순으로 해야한다.
     private void close(Connection con, Statement stmt, ResultSet rs){ // connection해제, 만약 con에서 close오류가 나면 pstmt로 못넘어감 이런 오류 해결하기 위해 따로 분리

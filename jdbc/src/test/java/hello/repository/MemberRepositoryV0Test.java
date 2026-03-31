@@ -4,7 +4,10 @@ import hello.domain.Member;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import java.sql.SQLException;
+import java.util.NoSuchElementException;
 
 
 @Slf4j
@@ -15,14 +18,29 @@ class MemberRepositoryV0Test {
     @Test
     void curd() throws SQLException {
         //save
-        Member member = new Member("memberV1", 10000);
+        Member member = new Member("memberV110", 10000);
         repository.save(member);
 
         //findById
         Member findMember = repository.findById(member.getMemberId());
         log.info("findMember={}", findMember);
         assertThat(findMember).isEqualTo(member);
+
+        //update: money : 10000 > 20000
+        repository.update(member.getMemberId(), 20000);
+        Member updateMember = repository.findById(member.getMemberId());
+        assertThat(updateMember.getMoney()).isEqualTo(20000); //update한 값이 20000만원이 맞는지 해당 updatemember의 id를 들고와서 비교
+
+        //delete
+        repository.delete(member.getMemberId());
+        assertThatThrownBy(() -> repository.findById(member.getMemberId())).isInstanceOf(NoSuchElementException.class);
+        //member에 해당 member가 없으면 nosush저걸 예외로 나오는데 저 예외가 터지면 정상적으로 삭제가 실행되는 것으로 검증함.
+//        Member deletedMember = repository.findById(member.getMemberId());
+
     } // 위 member와 findbyid로 찾은 member는 다름 findById에서는 sql로 반환된 값을 토대로 새로 객체를 만들어줬으니 다름.
+
+
+
 }
 
 //참고로 실행 결과에 member 객체의 참조 값이 아니라 실제 데이터가 보이는 이유는 롬복의 @Data 가
