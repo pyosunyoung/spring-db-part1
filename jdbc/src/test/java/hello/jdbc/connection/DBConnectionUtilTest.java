@@ -1,6 +1,5 @@
 package hello.jdbc.connection;
 
-import hello.connection.DBConnectionUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;

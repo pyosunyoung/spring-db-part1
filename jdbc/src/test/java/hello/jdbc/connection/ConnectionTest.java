@@ -10,7 +10,7 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 
-import static hello.connection.ConnectionConst.*;
+import static hello.jdbc.connection.ConnectionConst.*;
 
 @Slf4j
 public class ConnectionTest {
