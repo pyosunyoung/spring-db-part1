@@ -1,6 +1,7 @@
 package hello.jdbc.repository;
 
 import hello.jdbc.domain.Member;
+import hello.jdbc.repository.ex.MyDbException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.jdbc.datasource.DataSourceUtils;
 import org.springframework.jdbc.support.JdbcUtils;
@@ -11,21 +12,23 @@ import java.util.NoSuchElementException;
 
 
 /**
- * 트랜잭션 - 트랜잭션 매니저
- * DataSourceUtils.getConnection()
- * DataSourceUtils.releaseConnection()
+ * 예외 누수 문제 해결
+ * 체크 예외를 런타임 에외로 변경
+ * MemberRepository 인터페이스 사용
+ * throws SQLException 제거
  */
 
 @Slf4j
-public class MemberRepositoryV3{
+public class MemberRepositoryV4_1 implements MemberRepository {
     //datasource 주입
     private final DataSource dataSource;
 
-    public MemberRepositoryV3(DataSource dataSource) {
+    public MemberRepositoryV4_1(DataSource dataSource) {
         this.dataSource = dataSource;
     }
 
-    public Member save(Member member) throws SQLException {
+    @Override
+    public Member save(Member member) {
         String sql = "INSERT INTO member(member_id, money) VALUES (?, ?)";
 
         Connection con = null;
@@ -40,15 +43,16 @@ public class MemberRepositoryV3{
             return member;
         } catch (SQLException e) {
             log.error("db error", e);
-            throw e; //=> 밖으로 던져서 저기 위에 SQLException이 동작함
+            throw new MyDbException(e); // 런타임 예외
+
         } finally {
             close(con, pstmt, null); // 항상 sql 호출을 보장되기 위해 finally에서 쿼리를 실행하고 나면 리소스를 정리한다.
         }
 
 
     }
-
-    public Member findById(String memberId) throws SQLException {
+    @Override
+    public Member findById(String memberId) {
         String sql = "SELECT * FROM member WHERE member_id = ?"; // ?는 파라미터 바인딩
 
         Connection con = null;
@@ -73,48 +77,14 @@ public class MemberRepositoryV3{
             }
         } catch (SQLException e){
             log.error("db error", e);
-            throw e;
+            throw new MyDbException(e);
         } finally {
             close(con, pstmt, rs);
         }
     }
 
-    //datasourceutils를 적용함으로써 이 conection 주입 방식은 필요가 없어짐.
-//    public Member findById(Connection con, String memberId) throws SQLException {
-//        String sql = "SELECT * FROM member WHERE member_id = ?"; // ?는 파라미터 바인딩
-//
-////        Connection con = null; 파라미터로 넘어온 connection을 써야함
-//        PreparedStatement pstmt = null;
-//        ResultSet rs = null;
-//
-//        try{
-////            con = getConnection(); // 이걸 쓰면 안됨 파라미터로 넘어온 connection을 써야 커넥션 공유가 됨.
-//            pstmt = con.prepareStatement(sql);
-//            pstmt.setString(1, memberId);
-//
-//            rs = pstmt.executeQuery(); // select 쿼리의 결과가 rs에 들어감,
-//            //현재는 1개만 조회서 그렇지만 원래는 데이터가 여러개니 while 문을 통해서 re.next로 반복문을 통해 조회해야함.
-//            if(rs.next()){ // re.next를 해줘야 데이터가 있는 곳 부터 시작됨.
-//                Member member = new Member();
-//                member.setMemberId(rs.getString("member_id"));
-//                //현재 커서가 가리키고 있는 위치의 member_id 데이터를 String 타입으로 반환한다
-//                member.setMoney(rs.getInt("money"));
-//                return member; // next에서 가져온 결과값을 다시 객체화 member로 변환.
-//            } else { // next 적용 시 데이터가 없을 때
-//                throw new NoSuchElementException("member not found");
-//            }
-//        } catch (SQLException e){
-//            log.error("db error", e);
-//            throw e;
-//        } finally {
-//            //connection은 여기서 닫지 않는다. => 서비스에서 닫아줘야함. 왜냐 커넥션은 service계층에서 커넥션을 넘겨주면 거기서 트랜잭션이 일어나기 떄문에
-//            JdbcUtils.closeResultSet(rs);
-//            JdbcUtils.closeStatement(pstmt);
-//
-//        }
-//    }
-
-    public void update(String memberId, int money) throws SQLException {
+    @Override
+    public void update(String memberId, int money)  {
         String sql = "UPDATE member SET money = ? WHERE member_id = ?";
 
         Connection con = null;
@@ -129,37 +99,14 @@ public class MemberRepositoryV3{
             log.info("resultSize={} ", resultSize); //쿼리를 실행하고 영향받은 row수를 반환함., 테이블 1개라 1반환됨.
         } catch (SQLException e) {
             log.error("db error", e);
-            throw e;
+            throw new MyDbException(e);
         } finally {
             close(con, pstmt, null); // 항상 sql 호출을 보장되기 위해 finally에서 쿼리를 실행하고 나면 리소스를 정리한다.
         }
     }
-        //datasourceutils를 적용함으로써 이 conection 주입 방식은 필요가 없어짐.
-//    public void update(Connection con ,String memberId, int money) throws SQLException {
-//        String sql = "UPDATE member SET money = ? WHERE member_id = ?";
-//
-//        PreparedStatement pstmt = null;
-//
-//        try{
-//            pstmt = con.prepareStatement(sql);
-//            pstmt.setInt(1, money);
-//            pstmt.setString(2, memberId);
-//            int resultSize = pstmt.executeUpdate();
-//            log.info("resultSize={} ", resultSize); //쿼리를 실행하고 영향받은 row수를 반환함., 테이블 1개라 1반환됨.
-//        } catch (SQLException e) {
-//            log.error("db error", e);
-//            throw e;
-//        } finally {
-//            JdbcUtils.closeStatement(pstmt);
-//        }
-//    }
-//    1. 커넥션 유지가 필요한 두 메서드는 파라미터로 넘어온 커넥션을 사용해야 한다. 따라서 con =
-//            getConnection() 코드가 있으면 안된다.
-//2. 커넥션 유지가 필요한 두 메서드는 리포지토리에서 커넥션을 닫으면 안된다. 커넥션을 전달 받은 리포지토
-//    리 뿐만 아니라 이후에도 커넥션을 계속 이어서 사용하기 때문이다. 이후 서비스 로직이 끝날 때 트랜잭션을
-//    종료하고 닫아야 한다.
 
-    public void delete(String memberId) throws SQLException {
+    @Override
+    public void delete(String memberId) {
         String sql = "DELETE FROM member WHERE member_id = ?";
 
         Connection con = null;
@@ -173,7 +120,7 @@ public class MemberRepositoryV3{
 
         } catch (SQLException e) {
             log.error("db error", e);
-            throw e;
+            throw new MyDbException(e);
         } finally {
 
             close(con, pstmt, null);
